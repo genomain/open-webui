@@ -1,6 +1,8 @@
 <script lang="ts">
 	import Spinner from '$lib/components/common/Spinner.svelte';
-import { onMount } from 'svelte';
+	import { onMount } from 'svelte';
+
+	const MCP_API_BASE = import.meta.env.VITE_GENOMAIN_API_URL;
 
 	let loading = true;
 	let success = false;
@@ -28,7 +30,7 @@ import { onMount } from 'svelte';
 			if (state !== initiatorState) throw new Error('State mismatch');
 			if (!userJwt) throw new Error('User not logged in');
 
-			const response = await fetch('http://localhost:8000/auth/microsoft/callback', {
+			const response = await fetch(`${MCP_API_BASE}/auth/microsoft/callback`, {
 				method: 'POST',
 				headers: {
 					Authorization: `Bearer ${userJwt}`,

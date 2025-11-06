@@ -3,7 +3,9 @@
 	import Spinner from '$lib/components/common/Spinner.svelte';
 
 	const clientId = '34b72ac9-8a31-4cf4-ac74-c03a2e6d8b9c';
-	const redirectUri = 'http://localhost:5173/auth/microsoft/callback';
+	
+	const redirectUri = `${window.location.origin}/auth/microsoft/callback`;
+
 	const scopes = 'openid profile email offline_access User.Read Files.ReadWrite ';
 
 	function startMicrosoftLogin() {
