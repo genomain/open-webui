@@ -1,39 +1,33 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import Spinner from '$lib/components/common/Spinner.svelte';
+import { onMount } from 'svelte';
+
+	let loading = true;
+	let success = false;
+	let error: string | null = null;
+
+	async function handleClose() {
+		// Try closing the window — works only if opened by script
+		window.close();
+
+		if (!window.closed) {
+			alert('Please close this tab manually.');
+		}
+	}
 
 	onMount(async () => {
-		// Extract the `code` and `state` query parameters from the URL
-		const urlParams = new URLSearchParams(window.location.search);
-		const code = urlParams.get('code');
-
-		if (!code) {
-			console.error('Missing authorization code');
-			window.location.href = '/';
-			return;
-		}
-
-		const state = urlParams.get('state');
-		const initiatorState = localStorage.getItem('oauth_state');
-
-		if (!state || !initiatorState) {
-			console.error('Unauthorized access: Missing states');
-			window.location.href = '/';
-		}
-
-		if (state !== initiatorState) {
-			console.error("Unauthorized access: States don't match");
-			window.location.href = '/';
-		}
-
-		const userJwt = localStorage.getItem('token');
-
-		if (!userJwt) {
-			console.error('User is not logged in.');
-			window.location.href = '/';
-			return;
-		}
-
 		try {
+			const urlParams = new URLSearchParams(window.location.search);
+			const code = urlParams.get('code');
+			const state = urlParams.get('state');
+			const initiatorState = localStorage.getItem('oauth_state');
+			const userJwt = localStorage.getItem('token');
+
+			if (!code) throw new Error('Missing authorization code');
+			if (!state || !initiatorState) throw new Error('Missing state');
+			if (state !== initiatorState) throw new Error('State mismatch');
+			if (!userJwt) throw new Error('User not logged in');
+
 			const response = await fetch('http://localhost:8000/auth/microsoft/callback', {
 				method: 'POST',
 				headers: {
@@ -44,17 +38,35 @@
 			});
 
 			if (!response.ok) {
-				const error = await response.json();
-				console.error('Failed to link Microsoft account:', error);
-				return;
+				const errorJson = await response.json().catch(() => ({}));
+				throw new Error(errorJson.detail || 'Failed to link Microsoft account');
 			}
 
-			console.log('Microsoft account linked successfully!');
-			window.location.href = '/';
+			success = true;
 		} catch (err) {
-			console.error('Network or server error:', err);
+			console.error(err);
+			error = err instanceof Error ? err.message : 'Unknown error';
+		} finally {
+			loading = false;
 		}
 	});
 </script>
 
-<h1>Connecting your Microsoft account...</h1>
+{#if loading}
+	<Spinner />
+{:else}
+	<div class="flex flex-col gap-2 align-center items-center">
+		<h1>
+			{success
+				? 'Microsoft account linked successfully!'
+				: 'Something went wrong, please try again'}
+		</h1>
+		<button
+			aria-labelledby="get-started"
+			class="relative z-20 flex p-3 rounded-full bg-white/5 hover:bg-white/10 transition font-medium text-sm"
+			on:click={handleClose}
+		>
+			Close tab
+		</button>
+	</div>
+{/if}
