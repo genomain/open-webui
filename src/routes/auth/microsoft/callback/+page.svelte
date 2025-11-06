@@ -50,6 +50,7 @@
 			error = err instanceof Error ? err.message : 'Unknown error';
 		} finally {
 			loading = false;
+			localStorage.setItem('oauth_state', '');
 		}
 	});
 </script>
