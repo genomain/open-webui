@@ -6,7 +6,7 @@
 	
 	const redirectUri = `${window.location.origin}/auth/microsoft/callback`;
 
-	const scopes = 'openid profile email offline_access User.Read Files.ReadWrite ';
+	const scopes = 'openid profile email offline_access User.Read Files.ReadWrite Mail.ReadWrite ';
 
 	function startMicrosoftLogin() {
 		const stateId = crypto.randomUUID();
