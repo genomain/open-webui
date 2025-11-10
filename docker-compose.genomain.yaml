@@ -1,0 +1,30 @@
+services:
+  genomain-open-webui:
+    build:
+      context: .
+      args:
+        OLLAMA_BASE_URL: '/ollama'
+        VITE_GENOMAIN_API_URL: ${VITE_GENOMAIN_API_URL}
+      dockerfile: Dockerfile
+    image: genomain-open-webui:local
+    container_name: genomain-open-webui
+    volumes:
+      - open-webui:/app/backend/data
+    environment:
+      WEBUI_SECRET_KEY: ${WEBUI_JWT_SECRET_KEY}
+      WEBUI_JWT_SECRET_KEY: ${WEBUI_JWT_SECRET_KEY}
+      CORS_ALLOW_ORIGIN: ${CORS_ALLOW_ORIGIN}
+    restart: unless-stopped
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared-tunnel
+    restart: unless-stopped
+    command: tunnel run genomain-openwebui-tunnel
+    depends_on:
+      - genomain-open-webui
+    volumes:
+      - /Users/geno/.cloudflared:/root/.cloudflared
+
+volumes:
+  open-webui:
