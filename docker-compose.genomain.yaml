@@ -28,3 +28,6 @@ services:
 
 volumes:
   open-webui:
+
+
+#docker compose -f docker-compose.genomain.yaml --env-file .env.staging up --build
