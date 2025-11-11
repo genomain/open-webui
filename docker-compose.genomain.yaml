@@ -24,7 +24,7 @@ services:
     depends_on:
       - genomain-open-webui
     volumes:
-      - /Users/geno/.cloudflared:/root/.cloudflared
+      - /Users/geno/.cloudflared:/etc/cloudflared
 
 volumes:
   open-webui:
