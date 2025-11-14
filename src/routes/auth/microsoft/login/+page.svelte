@@ -2,10 +2,10 @@
 	import { onMount } from 'svelte';
 	import Spinner from '$lib/components/common/Spinner.svelte';
 
-	const clientId = '34b72ac9-8a31-4cf4-ac74-c03a2e6d8b9c';
 	
 	const redirectUri = `${window.location.origin}/auth/microsoft/callback`;
-
+	
+	const clientId = import.meta.env.VITE_MS_CLIENT_ID;
 	const scopes = import.meta.env.VITE_MS_GRAPH_SCOPES;
 
 	function startMicrosoftLogin() {
