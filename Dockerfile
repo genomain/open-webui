@@ -25,6 +25,13 @@ ARG GID=0
 ######## WebUI frontend ########
 FROM --platform=$BUILDPLATFORM node:22-alpine3.20 AS build
 ARG BUILD_HASH
+
+ARG VITE_MS_GRAPH_SCOPES
+ENV VITE_MS_GRAPH_SCOPES=${VITE_MS_GRAPH_SCOPES}
+
+ARG VITE_MS_CLIENT_ID
+ENV VITE_MS_CLIENT_ID=${VITE_MS_CLIENT_ID}
+
 ARG VITE_GENOMAIN_API_URL        
 ENV VITE_GENOMAIN_API_URL=${VITE_GENOMAIN_API_URL} \
 # Set Node.js options (heap limit Allocation failed - JavaScript heap out of memory)
