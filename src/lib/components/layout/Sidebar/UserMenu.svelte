@@ -7,7 +7,7 @@
 	import { fade, slide } from 'svelte/transition';
 
 	import { getUsage } from '$lib/apis';
-	import { userSignOut } from '$lib/apis/auths';
+	import { getMicrosoftSession, logOutMicrosoftSession, userSignOut } from '$lib/apis/auths';
 
 	import { showSettings, mobile, showSidebar, showShortcuts, user } from '$lib/stores';
 
@@ -21,6 +21,7 @@
 	import Code from '$lib/components/icons/Code.svelte';
 	import UserGroup from '$lib/components/icons/UserGroup.svelte';
 	import SignOut from '$lib/components/icons/SignOut.svelte';
+	import DocumentCheck from '$lib/components/icons/DocumentCheck.svelte';
 
 	const i18n = getContext('i18n');
 
@@ -44,8 +45,17 @@
 		}
 	};
 
+	let microsoftSession = false;
+	const hasMicrosoftSession = async () => {
+		microsoftSession = await getMicrosoftSession(localStorage.token).catch((error) => {
+			console.error('Error fetching Microsoft session:', error);
+			return false;
+		});
+	};
+
 	$: if (show) {
 		getUsageInfo();
+		hasMicrosoftSession();
 	}
 </script>
 
@@ -202,8 +212,32 @@
 
 			<hr class=" border-gray-50 dark:border-gray-800 my-1 p-0" />
 
+			{#if microsoftSession}
+				<DropdownMenu.Item
+					class="cursor-pointer flex rounded-xl py-1.5 px-3 w-full hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+					on:click={async () => {
+						await logOutMicrosoftSession(localStorage.token);
+						microsoftSession = false;
+					}}
+				>
+					<div class=" self-center mr-3">
+						<DocumentCheck className="w-5 h-5" strokeWidth="1.5" />
+					</div>
+					<div class=" self-center truncate">Log out from Microsoft</div>
+				</DropdownMenu.Item>
+			{:else}
+				<DropdownMenu.Item
+					class="cursor-pointer flex rounded-xl py-1.5 px-3 w-full hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+					on:click={async () => window.open(`${window.location.origin}/auth/microsoft/login`, '_blank')}
+				>
+					<div class=" self-center mr-3">
+						<DocumentCheck className="w-5 h-5" strokeWidth="1.5" />
+					</div>
+					<div class=" self-center truncate">Log in to Microsoft</div>
+				</DropdownMenu.Item>
+			{/if}
 			<DropdownMenu.Item
-				class="flex rounded-xl py-1.5 px-3 w-full hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+				class="cursor-pointer flex rounded-xl py-1.5 px-3 w-full hover:bg-gray-50 dark:hover:bg-gray-800 transition"
 				on:click={async () => {
 					const res = await userSignOut();
 					user.set(null);

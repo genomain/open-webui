@@ -26,8 +26,16 @@ ARG GID=0
 FROM --platform=$BUILDPLATFORM node:22-alpine3.20 AS build
 ARG BUILD_HASH
 
+ARG VITE_MS_GRAPH_SCOPES
+ENV VITE_MS_GRAPH_SCOPES=${VITE_MS_GRAPH_SCOPES}
+
+ARG VITE_MS_CLIENT_ID
+ENV VITE_MS_CLIENT_ID=${VITE_MS_CLIENT_ID}
+
+ARG VITE_GENOMAIN_API_URL        
+ENV VITE_GENOMAIN_API_URL=${VITE_GENOMAIN_API_URL} \
 # Set Node.js options (heap limit Allocation failed - JavaScript heap out of memory)
-# ENV NODE_OPTIONS="--max-old-space-size=4096"
+    NODE_OPTIONS="--max-old-space-size=4096"
 
 WORKDIR /app
 
@@ -75,8 +83,9 @@ ENV OPENAI_API_KEY="" \
     WEBUI_SECRET_KEY="" \
     SCARF_NO_ANALYTICS=true \
     DO_NOT_TRACK=true \
-    ANONYMIZED_TELEMETRY=false
-
+    ANONYMIZED_TELEMETRY=false \
+    WEBUI_JWT_SECRET_KEY="" 
+    
 #### Other models #########################################################
 ## whisper TTS model settings ##
 ENV WHISPER_MODEL="base" \

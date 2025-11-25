@@ -696,3 +696,27 @@ export const deleteAPIKey = async (token: string) => {
 	}
 	return res;
 };
+
+const MCP_API_BASE = import.meta.env.VITE_GENOMAIN_API_URL;
+
+export const getMicrosoftSession = async (token: string) => {
+	return await fetch(`${MCP_API_BASE}/auth/microsoft-session-verify`, {
+		method: 'GET',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${token}`
+		}
+	})
+		.then((res) => res.ok)
+		.catch((_) => false);
+};
+
+export const logOutMicrosoftSession = async (token: string) => {
+	return await fetch(`${MCP_API_BASE}/auth/microsoft-session-logout`, {
+		method: 'DELETE',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${token}`
+		}
+	}).then((res) => res.ok);
+};
