@@ -14,6 +14,7 @@ import html
 import inspect
 import re
 import ast
+import httpx
 
 from uuid import uuid4
 from concurrent.futures import ThreadPoolExecutor
@@ -121,6 +122,8 @@ from open_webui.env import (
     ENABLE_QUERIES_CACHE,
 )
 from open_webui.constants import TASKS
+
+from backend.open_webui.env import GENOMAIN_KLARTEXT_API_KEY, GENOMAIN_KLARTEXT_BASEURL
 
 
 logging.basicConfig(stream=sys.stdout, level=GLOBAL_LOG_LEVEL)
@@ -459,12 +462,6 @@ async def chat_completion_tools_handler(
                             }
                         )
 
-                print(
-                    f"Tool {tool_function_name} result: {tool_result}",
-                    tool_result_files,
-                    tool_result_embeds,
-                )
-
                 if tool_result:
                     tool = tools[tool_function_name]
                     tool_id = tool.get("tool_id", "")
@@ -561,6 +558,70 @@ async def chat_memory_handler(
 
     form_data["messages"] = add_or_update_system_message(
         f"User Context:\n{user_context}\n", form_data["messages"], append=True
+    )
+
+    return form_data
+
+
+async def klartext_rag_handler(
+    request: Request,
+    form_data: dict,
+    extra_params: dict,
+    user,
+):
+    # Improve this to use a reworded version that uses the full context of the chat in order to capture followup questions
+    query = get_last_user_message(form_data["messages"]) or None
+
+    if not query:
+        return form_data
+
+    top_k = extra_params.get("klartext_top_k", 5)
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(
+                f"{GENOMAIN_KLARTEXT_BASEURL}/vectors/search-query",
+                json={"query": query, "top_k": top_k},
+                headers={"x-rag-application-key": f"{GENOMAIN_KLARTEXT_API_KEY}"},
+            )
+        resp.raise_for_status()
+        payload = resp.json()
+        results = payload.get("results", []) or []
+    except Exception as e:
+        log.debug("Klartext RAG search failed: %s", e)
+        return form_data
+
+    lines: List[str] = []
+    for res_idx, res in enumerate(results):
+        score = res.get("score")
+        text = res.get("text")
+        if score is None or not text:
+            continue
+
+        source_doc = res.get("source_doc") or "unknown document"
+
+        lines.append(
+            f"{res_idx + 1}. [source document: {source_doc} / relevancy score: {score:.3f}] {text}"
+        )
+
+    if not lines:
+        return form_data
+
+    klartext_context = "\n".join(lines)
+
+    context_msg = (
+        "You are given legal reference context retrieved from a vector database.\n"
+        "If the question require legal context or is of a judicial nature, use the context - otherwise move on. \n"
+        "If you use the context and the source has a high accuracy score (atleast above 0.12), use it to answer the user's question. If it is not relevant or insufficient, "
+        "say so explicitly.\n"
+        "If you use any of the sources, make sure give the user a reference to the source document\n\n"
+        f"Legal Reference Context:\n{klartext_context}\n"
+    )
+
+    form_data["messages"] = add_or_update_system_message(
+        context_msg,
+        form_data["messages"],
+        append=True,
     )
 
     return form_data
@@ -1256,6 +1317,7 @@ async def process_chat_payload(request, form_data, user, metadata, model):
         raise Exception(f"{e}")
 
     features = form_data.pop("features", None)
+
     if features:
         if "voice" in features and features["voice"]:
             if request.app.state.config.VOICE_MODE_PROMPT_TEMPLATE != None:
@@ -1271,6 +1333,11 @@ async def process_chat_payload(request, form_data, user, metadata, model):
 
         if "memory" in features and features["memory"]:
             form_data = await chat_memory_handler(
+                request, form_data, extra_params, user
+            )
+
+        if "klartext" in features and features["klartext"]:
+            form_data = await klartext_rag_handler(
                 request, form_data, extra_params, user
             )
 

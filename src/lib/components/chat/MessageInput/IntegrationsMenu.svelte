@@ -39,6 +39,8 @@
 	export let imageGenerationEnabled = false;
 	export let showCodeInterpreterButton = false;
 	export let codeInterpreterEnabled = false;
+	export let showKlartextButton = false;
+	export let klartextEnabled = false;
 
 	export let onShowValves: Function;
 	export let onClose: Function;
@@ -274,7 +276,38 @@
 							</button>
 						</Tooltip>
 					{/if}
+					{#if showKlartextButton}
+						<Tooltip content="Klartext Integration" placement="top-start">
+							<button
+								class="flex w-full justify-between gap-2 items-center px-3 py-1.5 text-sm cursor-pointer rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/50"
+								aria-pressed={klartextEnabled}
+								aria-label={klartextEnabled ? 'Disable Klartext' : 'Enable Klartext'}
+								on:click={() => {
+									klartextEnabled = !klartextEnabled;
+								}}
+							>
+								<div class="flex-1 truncate">
+									<div class="flex flex-1 gap-2 items-center">
+										<div class="shrink-0">
+											<Terminal className="size-3.5" strokeWidth="1.75" />
+										</div>
 
+										<div class=" truncate">Klartext Integration</div>
+									</div>
+								</div>
+
+								<div class=" shrink-0">
+									<Switch
+										state={klartextEnabled}
+										on:change={async (e) => {
+											const state = e.detail;
+											await tick();
+										}}
+									/>
+								</div>
+							</button>
+						</Tooltip>
+					{/if}
 					{#if showCodeInterpreterButton}
 						<Tooltip content={$i18n.t('Execute code for analysis')} placement="top-start">
 							<button

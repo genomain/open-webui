@@ -882,3 +882,12 @@ PIP_PACKAGE_INDEX_OPTIONS = os.getenv("PIP_PACKAGE_INDEX_OPTIONS", "").split()
 ####################################
 
 EXTERNAL_PWA_MANIFEST_URL = os.environ.get("EXTERNAL_PWA_MANIFEST_URL")
+
+####################################
+# GENOMAIN KLARTEXT
+####################################
+
+GENOMAIN_KLARTEXT_BASEURL = os.environ.get(
+    "GENOMAIN_KLARTEXT_BASEURL", ""
+)
+GENOMAIN_KLARTEXT_API_KEY = os.environ.get("GENOMAIN_KLARTEXT_API_KEY", "")

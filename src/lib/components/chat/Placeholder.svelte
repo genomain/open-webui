@@ -52,6 +52,7 @@
 
 	export let imageGenerationEnabled = false;
 	export let codeInterpreterEnabled = false;
+	export let klartextEnabled = false;
 	export let webSearchEnabled = false;
 
 	export let onSelect = (e) => {};
@@ -208,6 +209,7 @@
 					bind:selectedFilterIds
 					bind:imageGenerationEnabled
 					bind:codeInterpreterEnabled
+					bind:klartextEnabled
 					bind:webSearchEnabled
 					bind:atSelectedModel
 					bind:showCommands

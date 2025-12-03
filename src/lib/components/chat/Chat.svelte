@@ -137,6 +137,7 @@
 	let imageGenerationEnabled = false;
 	let webSearchEnabled = false;
 	let codeInterpreterEnabled = false;
+	let klartextEnabled = false;
 
 	let showCommands = false;
 
@@ -198,6 +199,7 @@
 						webSearchEnabled = input.webSearchEnabled;
 						imageGenerationEnabled = input.imageGenerationEnabled;
 						codeInterpreterEnabled = input.codeInterpreterEnabled;
+						klartextEnabled = input.klartextEnabled;
 					}
 				} catch (e) {}
 			} else {
@@ -239,7 +241,6 @@
 			return;
 		}
 		sessionStorage.selectedModels = selectedModelsString;
-		console.log('saveSessionSelectedModels', selectedModels, sessionStorage.selectedModels);
 	};
 
 	let oldSelectedModelIds = [''];
@@ -258,6 +259,7 @@
 		webSearchEnabled = false;
 		imageGenerationEnabled = false;
 		codeInterpreterEnabled = false;
+		klartextEnabled = false;
 
 		if (selectedModelIds.filter((id) => id).length > 0) {
 			setDefaults();
@@ -276,6 +278,7 @@
 		}
 
 		const model = atSelectedModel ?? $models.find((m) => m.id === selectedModels[0]);
+
 		if (model) {
 			// Set Default Tools
 			if (model?.info?.meta?.toolIds) {
@@ -348,8 +351,6 @@
 	};
 
 	const chatEventHandler = async (event, cb) => {
-		console.log(event);
-
 		if (event.chat_id === $chatId) {
 			await tick();
 			let message = history.messages[event.message_id];
@@ -546,7 +547,6 @@
 
 	onMount(async () => {
 		loading = true;
-		console.log('mounted');
 		window.addEventListener('message', onMessageHandler);
 		$socket?.on('events', chatEventHandler);
 
@@ -580,6 +580,7 @@
 			webSearchEnabled = false;
 			imageGenerationEnabled = false;
 			codeInterpreterEnabled = false;
+			klartextEnabled = false;
 
 			try {
 				const input = JSON.parse(storageChatInput);
@@ -592,6 +593,7 @@
 					webSearchEnabled = input.webSearchEnabled;
 					imageGenerationEnabled = input.imageGenerationEnabled;
 					codeInterpreterEnabled = input.codeInterpreterEnabled;
+					klartextEnabled = input.klartextEnabled;
 				}
 			} catch (e) {}
 		}
@@ -623,8 +625,6 @@
 				JSON.stringify(selectedModels) !== JSON.stringify(folder.data.model_ids)
 			) {
 				selectedModels = folder.data.model_ids;
-
-				console.log('Set selectedModels from folder data:', selectedModels);
 			}
 		});
 
@@ -649,14 +649,6 @@
 	// File upload functions
 
 	const uploadGoogleDriveFile = async (fileData) => {
-		console.log('Starting uploadGoogleDriveFile with:', {
-			id: fileData.id,
-			name: fileData.name,
-			url: fileData.url,
-			headers: {
-				Authorization: `Bearer ${token}`
-			}
-		});
 
 		// Validate input
 		if (!fileData?.id || !fileData?.name || !fileData?.url || !fileData?.headers?.Authorization) {
@@ -1795,6 +1787,11 @@
 					$config?.features?.enable_web_search &&
 					($user?.role === 'admin' || $user?.permissions?.features?.web_search)
 						? webSearchEnabled
+						: false,
+				klartext:
+					$config?.features?.enable_klartext &&
+					($user?.role === 'admin' || $user?.permissions?.features?.klartext)
+						? klartextEnabled
 						: false
 			};
 
@@ -2513,6 +2510,7 @@
 									bind:selectedFilterIds
 									bind:imageGenerationEnabled
 									bind:codeInterpreterEnabled
+									bind:klartextEnabled
 									bind:webSearchEnabled
 									bind:atSelectedModel
 									bind:showCommands
@@ -2565,6 +2563,7 @@
 									bind:selectedFilterIds
 									bind:imageGenerationEnabled
 									bind:codeInterpreterEnabled
+									bind:klartextEnabled
 									bind:webSearchEnabled
 									bind:atSelectedModel
 									bind:showCommands

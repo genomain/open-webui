@@ -697,7 +697,7 @@ export const deleteAPIKey = async (token: string) => {
 	return res;
 };
 
-const MCP_API_BASE = import.meta.env.VITE_GENOMAIN_API_URL;
+const MCP_API_BASE = import.meta.env.VITE_GENOMAIN_MCP_URL;
 
 export const getMicrosoftSession = async (token: string) => {
 	return await fetch(`${MCP_API_BASE}/auth/microsoft-session-verify`, {

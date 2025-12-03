@@ -2,7 +2,7 @@
 	import Spinner from '$lib/components/common/Spinner.svelte';
 	import { onMount } from 'svelte';
 
-	const MCP_API_BASE = import.meta.env.VITE_GENOMAIN_API_URL;
+	const MCP_API_BASE = import.meta.env.VITE_GENOMAIN_MCP_URL;
 
 	let loading = true;
 	let success = false;
