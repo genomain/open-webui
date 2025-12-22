@@ -573,7 +573,7 @@ async def klartext_rag_handler(
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.post(
-                f"{GENOMAIN_KLARTEXT_BASEURL}/vectors/search-query",
+                f"{GENOMAIN_KLARTEXT_BASEURL}/search/search-query",
                 json={"query": query, "top_k": top_k},
                 headers={"x-rag-application-key": f"{GENOMAIN_KLARTEXT_API_KEY}"},
             )
