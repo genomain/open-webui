@@ -55,6 +55,7 @@
 	export let klartextEnabled = false;
 	export let webSearchEnabled = false;
 
+	export let onUpload: Function = (e) => {};
 	export let onSelect = (e) => {};
 	export let onChange = (e) => {};
 
@@ -218,9 +219,7 @@
 					{createMessagePair}
 					placeholder={$i18n.t('How can I help you today?')}
 					{onChange}
-					on:upload={(e) => {
-						dispatch('upload', e.detail);
-					}}
+					{onUpload}
 					on:submit={(e) => {
 						dispatch('submit', e.detail);
 					}}
