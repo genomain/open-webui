@@ -53,6 +53,7 @@ export const DEFAULT_PERMISSIONS = {
 		web_search: true,
 		image_generation: true,
 		code_interpreter: true,
+		klartext: false,
 		memories: true
 	},
 	settings: {
