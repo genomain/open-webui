@@ -1272,53 +1272,54 @@ async def klartext_rag_handler(
     extra_params: dict,
     user,
 ):
-    # Improve this to use a reworded version that uses the full context of the chat in order to capture followup questions
     query = get_last_user_message(form_data["messages"]) or None
-
     if not query:
         return form_data
 
-    top_k = extra_params.get("klartext_top_k", 5)
-
     try:
+        auth_header = request.headers.get("Authorization")
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.post(
-                f"{GENOMAIN_KLARTEXT_BASEURL}/search/search-query",
-                json={"query": query, "top_k": top_k},
-                headers={"x-rag-application-key": f"{GENOMAIN_KLARTEXT_API_KEY}"},
+                f"{GENOMAIN_KLARTEXT_BASEURL}/search",
+                json={"query": query},
+                headers={
+                    "x-data-platform-application-key": GENOMAIN_KLARTEXT_API_KEY,
+                    "Authorization": auth_header,
+                },
             )
         resp.raise_for_status()
         payload = resp.json()
-        results = payload.get("results", []) or []
     except Exception as e:
         log.debug("Klartext RAG search failed: %s", e)
         return form_data
 
-    lines: List[str] = []
-    for res_idx, res in enumerate(results):
-        score = res.get("score")
-        text = res.get("text")
-        if score is None or not text:
-            continue
+    context = payload.get("context", "")
+    sources = payload.get("sources", [])
 
-        source_doc = res.get("source_doc") or "unknown document"
-
-        lines.append(
-            f"{res_idx + 1}. [source document: {source_doc} / relevancy score: {score:.3f}] {text}"
-        )
-
-    if not lines:
+    if not context:
         return form_data
 
-    klartext_context = "\n".join(lines)
+    # Build source reference list
+    source_lines: List[str] = []
+    for src in sources:
+        name = src.get("uploaded_name", "unknown")
+        chunk_idx = src.get("chunk_index", "?")
+        distance = src.get("distance", 0)
+        relevance = 1 - distance  # Convert distance to similarity score
+        source_lines.append(
+            f"- {name} (chunk {chunk_idx}, relevance: {relevance:.3f})"
+        )
+
+    source_ref = "\n".join(source_lines) if source_lines else "No sources available."
 
     context_msg = (
         "You are given legal reference context retrieved from a vector database.\n"
-        "If the question require legal context or is of a judicial nature, use the context - otherwise move on. \n"
-        "If you use the context and the source has a high accuracy score (atleast above 0.12), use it to answer the user's question. If it is not relevant or insufficient, "
+        "If the question requires legal context or is of a judicial nature, use the context - otherwise move on.\n"
+        "Use the context to answer the user's question. If it is not relevant or insufficient, "
         "say so explicitly.\n"
-        "If you use any of the sources, make sure give the user a reference to the source document\n\n"
-        f"Legal Reference Context:\n{klartext_context}\n"
+        "When using sources, reference the source document name so the user can look it up.\n\n"
+        f"Legal Reference Context:\n{context}\n\n"
+        f"Sources:\n{source_ref}\n"
     )
 
     form_data["messages"] = add_or_update_system_message(
@@ -4345,7 +4346,8 @@ async def streaming_chat_response_handler(response, ctx):
                                 code = sanitize_code(code)
 
                                 if CODE_INTERPRETER_BLOCKED_MODULES:
-                                    blocking_code = textwrap.dedent(f"""
+                                    blocking_code = textwrap.dedent(
+                                        f"""
                                         import builtins
     
                                         BLOCKED_MODULES = {CODE_INTERPRETER_BLOCKED_MODULES}
@@ -4361,7 +4363,8 @@ async def streaming_chat_response_handler(response, ctx):
                                             return _real_import(name, globals, locals, fromlist, level)
     
                                         builtins.__import__ = restricted_import
-                                    """)
+                                    """
+                                    )
                                     code = blocking_code + "\n" + code
 
                                 if (
