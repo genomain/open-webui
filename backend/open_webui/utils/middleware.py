@@ -1278,7 +1278,7 @@ async def klartext_rag_handler(
 
     try:
         auth_header = request.headers.get("Authorization")
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.post(
                 f"{GENOMAIN_KLARTEXT_BASEURL}/search",
                 json={"query": query},
