@@ -69,6 +69,7 @@ from open_webui.socket.main import (
     get_models_in_use,
 )
 from open_webui.routers import (
+    klartext,
     analytics,
     audio,
     images,
@@ -586,7 +587,8 @@ class SPAStaticFiles(StaticFiles):
 
 
 if LOG_FORMAT != "json":
-    print(rf"""
+    print(
+        rf"""
  ██████╗ ██████╗ ███████╗███╗   ██╗    ██╗    ██╗███████╗██████╗ ██╗   ██╗██╗
 ██╔═══██╗██╔══██╗██╔════╝████╗  ██║    ██║    ██║██╔════╝██╔══██╗██║   ██║██║
 ██║   ██║██████╔╝█████╗  ██╔██╗ ██║    ██║ █╗ ██║█████╗  ██████╔╝██║   ██║██║
@@ -598,7 +600,8 @@ if LOG_FORMAT != "json":
 v{VERSION} - building the best AI user interface.
 {f"Commit: {WEBUI_BUILD_HASH}" if WEBUI_BUILD_HASH != "dev-build" else ""}
 https://github.com/open-webui/open-webui
-""")
+"""
+    )
 
 
 @asynccontextmanager
@@ -1564,6 +1567,9 @@ if ENABLE_ADMIN_ANALYTICS:
     app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["analytics"])
 app.include_router(utils.router, prefix="/api/v1/utils", tags=["utils"])
 app.include_router(terminals.router, prefix="/api/v1/terminals", tags=["terminals"])
+
+# CUSTOM KLARTEXT ENDPOINTS
+app.include_router(klartext.router, prefix="/klartext", tags=["klartext"])
 
 # SCIM 2.0 API for identity management
 if ENABLE_SCIM:

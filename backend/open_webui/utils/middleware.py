@@ -1452,61 +1452,183 @@ async def klartext_rag_handler(
     extra_params: dict,
     user,
 ):
+    event_emitter = extra_params.get("__event_emitter__")
+
+    await event_emitter({
+        "type": "status",
+        "data": {
+            "action": "klartext_search",
+            "description": "Searching legal database...",
+            "done": False,
+        },
+    })
+
     query = get_last_user_message(form_data["messages"]) or None
     if not query:
         return form_data
 
     try:
         auth_header = request.headers.get("Authorization")
+        headers = {
+            "x-data-platform-application-key": GENOMAIN_KLARTEXT_API_KEY,
+        }
+        if auth_header:
+            headers["Authorization"] = auth_header
+
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.post(
                 f"{GENOMAIN_KLARTEXT_BASEURL}/search",
                 json={"query": query},
-                headers={
-                    "x-data-platform-application-key": GENOMAIN_KLARTEXT_API_KEY,
-                    "Authorization": auth_header,
-                },
+                headers=headers,
             )
         resp.raise_for_status()
         payload = resp.json()
     except Exception as e:
         log.debug("Klartext RAG search failed: %s", e)
+        await event_emitter({
+            "type": "status",
+            "data": {
+                "action": "klartext_search",
+                "description": "Search failed",
+                "done": True,
+                "error": True,
+            },
+        })
         return form_data
 
     context = payload.get("context", "")
     sources = payload.get("sources", [])
 
     if not context:
+        await event_emitter({
+            "type": "status",
+            "data": {
+                "action": "klartext_search",
+                "description": "No results found",
+                "done": True,
+                "error": True,
+            },
+        })
         return form_data
 
-    # Build source reference list
+    await event_emitter({
+        "type": "status",
+        "data": {
+            "action": "klartext_search",
+            "description": f"Found {len(sources)} relevant source(s), preparing context...",
+            "done": False,
+        },
+    })
+
+    # Split context into individual chunks on the --- delimiter
+    raw_chunks = [c.strip() for c in context.split("---") if c.strip()]
+
+    # Build numbered context with document names as labels
+    numbered_context = ""
+    for i, (chunk_text, src) in enumerate(zip(raw_chunks, sources), 1):
+        name = src.get("uploaded_name", "unknown")
+        chunk_idx = src.get("chunk_index", "?")
+        numbered_context += f"[{name}, chunk {chunk_idx}]\n{chunk_text}\n\n---\n\n"
+
+    # Build source reference list with document names
     source_lines: List[str] = []
     for src in sources:
         name = src.get("uploaded_name", "unknown")
         chunk_idx = src.get("chunk_index", "?")
         distance = src.get("distance", 0)
-        relevance = 1 - distance  # Convert distance to similarity score
+        relevance = 1 - distance
         source_lines.append(
             f"- {name} (chunk {chunk_idx}, relevance: {relevance:.3f})"
         )
 
     source_ref = "\n".join(source_lines) if source_lines else "No sources available."
 
+    example_name = sources[0].get("uploaded_name", "document.pdf") if sources else "document.pdf"
+    example_chunk = sources[0].get("chunk_index", 0) if sources else 0
+
     context_msg = (
-        "You are given legal reference context retrieved from a vector database.\n"
-        "If the question requires legal context or is of a judicial nature, use the context - otherwise move on.\n"
-        "Use the context to answer the user's question. If it is not relevant or insufficient, "
-        "say so explicitly.\n"
-        "When using sources, reference the source document name so the user can look it up.\n\n"
-        f"Legal Reference Context:\n{context}\n\n"
-        f"Sources:\n{source_ref}\n"
+        "You are a legal assistant with access to a legal reference database.\n\n"
+        "INSTRUCTIONS:\n"
+        "- If the user's question is not of a legal or judicial nature, answer it normally using your own knowledge and ignore the legal context below.\n"
+        "- If the question is legal or judicial in nature, you MUST answer using ONLY the legal context provided below. "
+        "Do NOT use your own training knowledge or make assumptions beyond what is written in the context. "
+        "Do NOT infer or state specific numbers, timeframes, or requirements unless they appear explicitly in the provided sources. "
+        "If the context does not contain sufficient information to answer the question, say so explicitly — do not guess or fill in gaps from memory.\n\n"
+        "You MUST respond in the same language as the user's question.\n\n"
+        f"Legal Reference Context:\n{numbered_context}\n"
+        f"Source Index:\n{source_ref}\n\n"
+        "For legal questions, every claim or paragraph in your answer MUST end with an inline citation. "
+        "Use the exact document name and chunk number from the context headers above. "
+        "Format citations exactly like this: "
+        f"({example_name}, chunk {example_chunk}). "
+        "Do NOT omit citations. Every statement must be traceable to a source chunk.\n\n"
     )
 
-    form_data["messages"] = add_or_update_system_message(
-        context_msg,
-        form_data["messages"],
-        append=True,
-    )
+    log.debug("Klartext RAG Context Message:\n%s", context_msg)
+
+    # Ollama models handle context better when injected into the user message
+    model_info = form_data.get("metadata", {}).get("model", {})
+    if model_info.get("owned_by") == "ollama":
+        form_data["messages"] = prepend_to_first_user_message_content(
+            context_msg,
+            form_data["messages"],
+        )
+    else:
+        form_data["messages"] = add_or_update_system_message(
+            context_msg,
+            form_data["messages"],
+            append=True,
+        )
+
+    await event_emitter({
+        "type": "status",
+        "data": {
+            "action": "klartext_search",
+            "description": "Legal context retrieved, generating answer...",
+            "done": False,
+        },
+    })
+
+    # Emit citation events
+    from collections import defaultdict
+    doc_chunks = defaultdict(list)
+    for i, src in enumerate(sources):
+        doc_id = src.get("document_id")
+        chunk_text = raw_chunks[i] if i < len(raw_chunks) else ""
+        doc_chunks[doc_id].append((src, chunk_text))
+
+    backend_origin = str(request.base_url).rstrip("/")
+
+    for doc_id, chunks in doc_chunks.items():
+        first_src = chunks[0][0]
+        name = first_src.get("uploaded_name", "unknown")
+        download_url = f"{backend_origin}/klartext/files/{doc_id}/download"
+
+        await event_emitter({
+            "type": "citation",
+            "data": {
+                "document": [chunk_text for _, chunk_text in chunks],
+                "metadata": [{
+                    "source": name,
+                    "downloadable_file": True,
+                    "chunk_index": src.get("chunk_index", 0),
+                    "relevance": round(1 - src.get("distance", 0), 3),
+                } for src, _ in chunks],
+                "source": {
+                    "name": name,
+                    "url": download_url,
+                },
+            },
+        })
+
+    await event_emitter({
+        "type": "status",
+        "data": {
+            "action": "klartext_search",
+            "description": "Legal context retrieved",
+            "done": True,
+        },
+    })
 
     return form_data
 
