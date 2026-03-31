@@ -1,5 +1,6 @@
 export CORS_ALLOW_ORIGIN="http://localhost:5173;http://localhost:8080"
 export GENOMAIN_KLARTEXT_BASEURL=""
+export GENOMAIN_KLARTEXT_DOWNLOAD_BASEURL=""
 export GENOMAIN_KLARTEXT_API_KEY=""
 export WEBUI_JWT_SECRET_KEY=""
 export WEBUI_SECRET_KEY=""
